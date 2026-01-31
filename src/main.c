@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
         rc = writer_loop(&client, argv[optind + 1]);
     }
 
-    if (_DISCONN &&
+    if (!_DISCONN &&
         (rc = MQTTClient_disconnect(client, 1000)) != MQTTCLIENT_SUCCESS) {
         printf("disconnect failed, %d", rc);
         return 1;
