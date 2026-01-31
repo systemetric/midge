@@ -13,6 +13,8 @@ static int _EXIT = 0;
 static int _DISCONN = 0;
 static int _READER = 0;
 
+static const char *_USAGE = "usage: %s [-r] [-a address] <client id> <topic>\n";
+
 int msgarrvd(void *context, char *topic_name, int topic_len,
              MQTTClient_message *message) {
     if (_READER) {
@@ -81,24 +83,30 @@ int writer_loop(MQTTClient *client, char *topic) {
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("usage: %s [-r] <client id> <topic>\n", argv[0]);
+        printf(_USAGE, argv[0]);
         return 1;
     }
 
+    char *address = ADDRESS;
+
     int opt;
-    while ((opt = getopt(argc, argv, "r")) != -1) {
+    while ((opt = getopt(argc, argv, "ra:")) != -1) {
         switch (opt) {
             case 'r':
                 _READER = 1;
                 break;
+            case 'a':
+                address = optarg;
+                break;
             default:
-                printf("usage: %s [-r], <client id> <topic>\n", argv[0]);
+                printf(_USAGE, argv[0]);
                 return 1;
         }
     }
 
-    if (optind + 1 > argc) {
-        printf("usage: %s [-r], <client id> <topic>\n", argv[0]);
+    // must be two arguments after options
+    if (argc - optind != 2) {
+        printf(_USAGE, argv[0]);
         return 1;
     }
 
@@ -107,7 +115,7 @@ int main(int argc, char *argv[]) {
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 
-    if ((rc = MQTTClient_create(&client, ADDRESS, argv[optind],
+    if ((rc = MQTTClient_create(&client, address, argv[optind],
                                 MQTTCLIENT_PERSISTENCE_NONE, NULL)) !=
         MQTTCLIENT_SUCCESS) {
         printf("create failed, %d\n", rc);
