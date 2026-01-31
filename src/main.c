@@ -8,7 +8,6 @@
 
 #define ADDRESS "mqtt://localhost:1883"
 #define QOS 0
-#define TIMEOUT 1000L
 
 static int _EXIT = 0;
 static int _DISCONN = 0;
