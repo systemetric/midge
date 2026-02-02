@@ -6,7 +6,7 @@
 }:
 
 stdenv.mkDerivation {
-  name = "mqtt_shim";
+  name = "midge";
   version = "0.1";
 
   src = builtins.filterSource (path: type: type != "directory" || baseNameOf path != "build") ./..;

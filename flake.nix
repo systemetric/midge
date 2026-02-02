@@ -1,5 +1,5 @@
 {
-  description = "mqtt_shim for RoboCon";
+  description = "midge MQTT helper for RoboCon";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

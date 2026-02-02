@@ -1,4 +1,4 @@
-# mqtt_shim
+# midge
 
 A helper tool for sending/receiving MQTT payloads over stdin/stdout
 

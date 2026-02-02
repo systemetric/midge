@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(mqtt_shim VERSION 0.1 LANGUAGES C)
+project(midge VERSION 0.1 LANGUAGES C)
 
 find_package(eclipse-paho-mqtt-c REQUIRED)
 
