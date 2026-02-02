@@ -141,6 +141,11 @@ int main(int argc, char *argv[]) {
         rc = writer_loop(&client, argv[optind + 1]);
     }
 
+    // either reader or writer failed, exit early
+    if (rc != 0) {
+        return rc;
+    }
+
     if (!_DISCONN &&
         (rc = MQTTClient_disconnect(client, 1000)) != MQTTCLIENT_SUCCESS) {
         printf("disconnect failed, %d", rc);
