@@ -6,6 +6,10 @@
 
 #define BUF_SIZE 4096
 
+#define NO_ERR 0
+#define ERR 1
+#define ERR_MQTT 2
+
 #define ADDRESS "mqtt://localhost:1883"
 #define QOS 0
 
@@ -38,14 +42,14 @@ int reader_loop(MQTTClient *client, char *topic) {
     if ((rc = MQTTClient_subscribe(*client, topic, QOS)) !=
         MQTTCLIENT_SUCCESS) {
         printf("sub failed, %d\n", rc);
-        return 1;
+        return ERR_MQTT;
     }
 
     do {
         sleep(1);
     } while (!_EXIT);
 
-    return 0;
+    return NO_ERR;
 }
 
 int writer_loop(MQTTClient *client, char *topic) {
@@ -57,7 +61,7 @@ int writer_loop(MQTTClient *client, char *topic) {
     void *buf = (void *)malloc(BUF_SIZE);
     if (!buf) {
         perror("malloc");
-        return 1;
+        return ERR;
     }
 
     while (!_EXIT) {
@@ -73,43 +77,15 @@ int writer_loop(MQTTClient *client, char *topic) {
             MQTTCLIENT_SUCCESS) {
             printf("pub failed, %d\n", rc);
             free(buf);
-            return 0;
+            return ERR_MQTT;
         }
     }
 
     free(buf);
-    return 0;
+    return NO_ERR;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printf(_USAGE, argv[0]);
-        return 1;
-    }
-
-    char *address = ADDRESS;
-
-    int opt;
-    while ((opt = getopt(argc, argv, "ra:")) != -1) {
-        switch (opt) {
-            case 'r':
-                _READER = 1;
-                break;
-            case 'a':
-                address = optarg;
-                break;
-            default:
-                printf(_USAGE, argv[0]);
-                return 1;
-        }
-    }
-
-    // must be two arguments after options
-    if (argc - optind != 2) {
-        printf(_USAGE, argv[0]);
-        return 1;
-    }
-
+int run_mqtt(char *address, char *argv[]) {
     int rc;
 
     MQTTClient client;
@@ -119,20 +95,20 @@ int main(int argc, char *argv[]) {
                                 MQTTCLIENT_PERSISTENCE_NONE, NULL)) !=
         MQTTCLIENT_SUCCESS) {
         printf("create failed, %d\n", rc);
-        return 1;
+        return ERR_MQTT;
     }
 
     if ((rc = MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd,
                                       NULL)) != MQTTCLIENT_SUCCESS) {
         printf("callback set failed, %d\n", rc);
-        return 1;
+        return ERR_MQTT;
     }
 
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
         printf("conn failed, %d\n", rc);
-        return 1;
+        return ERR_MQTT;
     }
 
     if (_READER) {
@@ -149,10 +125,52 @@ int main(int argc, char *argv[]) {
     if (!_DISCONN &&
         (rc = MQTTClient_disconnect(client, 1000)) != MQTTCLIENT_SUCCESS) {
         printf("disconnect failed, %d", rc);
-        return 1;
+        return ERR_MQTT;
     }
 
     MQTTClient_destroy(&client);
+
+    return rc;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        printf(_USAGE, argv[0]);
+        return ERR;
+    }
+
+    char *address = ADDRESS;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "ra:")) != -1) {
+        switch (opt) {
+            case 'r':
+                _READER = 1;
+                break;
+            case 'a':
+                address = optarg;
+                break;
+            default:
+                printf(_USAGE, argv[0]);
+                return ERR;
+        }
+    }
+
+    // must be two arguments after options
+    if (argc - optind != 2) {
+        printf(_USAGE, argv[0]);
+        return ERR;
+    }
+
+    int rc;
+
+    do {
+        if (rc == ERR_MQTT)
+            printf("mqtt failed, restarting\n");
+
+        rc = run_mqtt(address, argv);
+        // only retry on mqtt errors
+    } while (rc == ERR_MQTT);
 
     return rc;
 }
