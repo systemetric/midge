@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
         return ERR;
     }
 
-    int rc;
+    int rc = 0;
 
     do {
         if (rc == ERR_MQTT)
