@@ -16,13 +16,17 @@
 static int _EXIT = 0;
 static int _DISCONN = 0;
 static int _READER = 0;
+static int _RETAIN = 0;
 
-static const char *_USAGE = "usage: %s [-r] [-a address] <client id> <topic>\n";
+static const char *_USAGE =
+    "usage: %s [-x] [-r] [-a address] <client id> <topic>\n";
 
-int msgarrvd(void *context, char *topic_name, int topic_len,
-             MQTTClient_message *message) {
+int
+msgarrvd(void *context, char *topic_name, int topic_len,
+         MQTTClient_message *message)
+{
     if (_READER) {
-        printf("%s", (char *)message->payload);
+        fprintf(stderr, "%s", (char *)message->payload);
     }
 
     MQTTClient_free(topic_name);
@@ -30,18 +34,22 @@ int msgarrvd(void *context, char *topic_name, int topic_len,
     return 1;
 };
 
-void connlost(void *context, char *cause) {
-    printf("conn lost, %s\n", cause);
+void
+connlost(void *context, char *cause)
+{
+    fprintf(stderr, "conn lost, %s\n", cause);
     _EXIT = 1;
     _DISCONN = 1;
 }
 
-int reader_loop(MQTTClient *client, char *topic) {
+int
+reader_loop(MQTTClient *client, char *topic)
+{
     int rc;
 
     if ((rc = MQTTClient_subscribe(*client, topic, QOS)) !=
         MQTTCLIENT_SUCCESS) {
-        printf("sub failed, %d\n", rc);
+        fprintf(stderr, "sub failed, %d\n", rc);
         return ERR_MQTT;
     }
 
@@ -52,7 +60,9 @@ int reader_loop(MQTTClient *client, char *topic) {
     return NO_ERR;
 }
 
-int writer_loop(MQTTClient *client, char *topic) {
+int
+writer_loop(MQTTClient *client, char *topic)
+{
     int rc;
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
@@ -72,10 +82,10 @@ int writer_loop(MQTTClient *client, char *topic) {
         pubmsg.payload = buf;
         pubmsg.payloadlen = rc;
         pubmsg.qos = QOS;
-        pubmsg.retained = 0;
+        pubmsg.retained = _RETAIN;
         if ((rc = MQTTClient_publishMessage(*client, topic, &pubmsg, &token)) !=
             MQTTCLIENT_SUCCESS) {
-            printf("pub failed, %d\n", rc);
+            fprintf(stderr, "pub failed, %d\n", rc);
             free(buf);
             return ERR_MQTT;
         }
@@ -85,7 +95,9 @@ int writer_loop(MQTTClient *client, char *topic) {
     return NO_ERR;
 }
 
-int run_mqtt(char *address, char *argv[]) {
+int
+run_mqtt(char *address, char *argv[])
+{
     int rc;
 
     MQTTClient client;
@@ -94,20 +106,20 @@ int run_mqtt(char *address, char *argv[]) {
     if ((rc = MQTTClient_create(&client, address, argv[optind],
                                 MQTTCLIENT_PERSISTENCE_NONE, NULL)) !=
         MQTTCLIENT_SUCCESS) {
-        printf("create failed, %d\n", rc);
+        fprintf(stderr, "create failed, %d\n", rc);
         return ERR_MQTT;
     }
 
     if ((rc = MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd,
                                       NULL)) != MQTTCLIENT_SUCCESS) {
-        printf("callback set failed, %d\n", rc);
+        fprintf(stderr, "callback set failed, %d\n", rc);
         return ERR_MQTT;
     }
 
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-        printf("conn failed, %d\n", rc);
+        fprintf(stderr, "conn failed, %d\n", rc);
         return ERR_MQTT;
     }
 
@@ -124,7 +136,7 @@ int run_mqtt(char *address, char *argv[]) {
 
     if (!_DISCONN &&
         (rc = MQTTClient_disconnect(client, 1000)) != MQTTCLIENT_SUCCESS) {
-        printf("disconnect failed, %d", rc);
+        fprintf(stderr, "disconnect failed, %d", rc);
         return ERR_MQTT;
     }
 
@@ -133,7 +145,9 @@ int run_mqtt(char *address, char *argv[]) {
     return rc;
 }
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
     if (argc < 3) {
         printf(_USAGE, argv[0]);
         return ERR;
@@ -142,8 +156,11 @@ int main(int argc, char *argv[]) {
     char *address = ADDRESS;
 
     int opt;
-    while ((opt = getopt(argc, argv, "ra:")) != -1) {
+    while ((opt = getopt(argc, argv, "xra:")) != -1) {
         switch (opt) {
+            case 'x':
+                _RETAIN = 1;
+                break;
             case 'r':
                 _READER = 1;
                 break;
@@ -162,11 +179,14 @@ int main(int argc, char *argv[]) {
         return ERR;
     }
 
+    if (_RETAIN && _READER)
+        fprintf(stderr, "message retain has no effect in read mode\n");
+
     int rc = 0;
 
     do {
         if (rc == ERR_MQTT)
-            printf("mqtt failed, restarting\n");
+            fprintf(stderr, "mqtt failed, restarting\n");
 
         rc = run_mqtt(address, argv);
         // only retry on mqtt errors
