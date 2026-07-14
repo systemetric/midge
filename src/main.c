@@ -17,9 +17,10 @@ static int _EXIT = 0;
 static int _DISCONN = 0;
 static int _READER = 0;
 static int _RETAIN = 0;
+static int _RECONN = 1;
 
 static const char *_USAGE =
-    "usage: %s [-x] [-r] [-a address] <client id> <topic>\n";
+    "usage: %s [-n] [-x] [-r] [-a address] <client id> <topic>\n";
 
 int
 msgarrvd(void *context, char *topic_name, int topic_len,
@@ -156,8 +157,11 @@ main(int argc, char *argv[])
     char *address = ADDRESS;
 
     int opt;
-    while ((opt = getopt(argc, argv, "xra:")) != -1) {
+    while ((opt = getopt(argc, argv, "nxra:")) != -1) {
         switch (opt) {
+            case 'n':
+                _RECONN = 0;
+                break;
             case 'x':
                 _RETAIN = 1;
                 break;
@@ -190,7 +194,7 @@ main(int argc, char *argv[])
 
         rc = run_mqtt(address, argv);
         // only retry on mqtt errors
-    } while (rc == ERR_MQTT);
+    } while (rc == ERR_MQTT && _RECONN);
 
     return rc;
 }
